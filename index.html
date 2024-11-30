@@ -39,7 +39,8 @@
         reticle,
         hitTestSource,
         hitTestSourceRequested = false;
-      let modelLoaded = false;
+      let humanModel = null;
+      const humanModels = []; // To store placed human models
 
       // Initialize the scene
       init();
@@ -47,30 +48,32 @@
       // Make loadModel function globally available
       window.loadModel = loadModel;
 
+      // Function to load human model
       function loadModel() {
-        if (modelLoaded) {
-          console.log("Model already loaded.");
-          return; // Prevent loading the model multiple times
-        }
+        if (!humanModel) {
+          console.log("Loading human model...");
 
-        console.log("Loading model...");
-        const loader = new GLTFLoader().setPath("3d/");
-        loader.load(
-          "scene.glb",
-          function (gltf) {
-            modelLoaded = true;
-            const model = gltf.scene;
-            model.scale.set(0.1, 0.1, 0.1); // Make the human model smaller
-            model.name = "humanModel"; // Set the name for easier identification
-            scene.add(model);
-          },
-          undefined,
-          function (error) {
-            console.error("Error loading model:", error);
-          }
-        );
+          // Load human model (only once)
+          const loader = new GLTFLoader().setPath("3d/");
+          loader.load(
+            "scene.glb",
+            function (gltf) {
+              humanModel = gltf.scene;
+              humanModel.scale.set(0.1, 0.1, 0.1); // Make the human model smaller
+
+              console.log("Human model loaded successfully!");
+            },
+            undefined,
+            function (error) {
+              console.error("Error loading model:", error);
+            }
+          );
+        } else {
+          console.log("Model already loaded.");
+        }
       }
 
+      // Function to initialize the AR scene
       function init() {
         container = document.createElement("div");
         document.body.appendChild(container);
@@ -117,12 +120,14 @@
         window.addEventListener("resize", onWindowResize);
       }
 
+      // Window resize handler
       function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
+      // Animate the scene
       function animate(timestamp, frame) {
         if (frame) {
           const referenceSpace = renderer.xr.getReferenceSpace();
@@ -166,16 +171,14 @@
         renderer.render(scene, camera);
       }
 
+      // Handle model placement
       function onSelect() {
-        if (reticle.visible && modelLoaded) {
-          // Here, you can place the model at the reticle position
-          const model = scene.getObjectByName("humanModel");
-          if (model) {
-            model.position.setFromMatrixPosition(reticle.matrix);
-            console.log("Model placed.");
-          } else {
-            console.log("No model loaded to place.");
-          }
+        if (reticle.visible && humanModel) {
+          const newHuman = humanModel.clone(); // Clone the loaded human model
+          newHuman.position.setFromMatrixPosition(reticle.matrix); // Place it at the reticle position
+          scene.add(newHuman); // Add to the scene
+          humanModels.push(newHuman); // Track placed models
+          console.log("New human model placed.");
         } else {
           console.log("Reticle not visible or model not loaded.");
         }
